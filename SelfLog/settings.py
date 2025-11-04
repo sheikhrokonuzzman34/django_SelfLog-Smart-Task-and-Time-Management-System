@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-oercrx01*+8yj+2ds=j2$b+2(qysv#e@jdn1emlbmqe7lrz86%
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -37,6 +37,19 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    
+    # custom apps
+    'auth_app',
+    
+]
+
+# Custom user model
+AUTH_USER_MODEL = 'auth_app.CustomUser'
+
+# Custom authentication backends
+AUTHENTICATION_BACKENDS = [
+    'auth_app.backends.EmailOrPhoneBackend',  # Our custom backend
+    'django.contrib.auth.backends.ModelBackend',  # Default backend as fallback
 ]
 
 MIDDLEWARE = [
