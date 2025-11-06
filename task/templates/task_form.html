@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - SelfLog{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">{{ title }}</h2>
+    </div>
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            
+            {% if form.non_field_errors %}
+            <div class="alert alert-danger">
+                {% for error in form.non_field_errors %}
+                <p class="mb-0">{{ error }}</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <div class="form-group">
+                <label for="{{ form.title.id_for_label }}" class="form-label">Task Title</label>
+                {{ form.title }}
+                {% if form.title.errors %}
+                <div style="color: var(--danger-color); font-size: 0.875rem; margin-top: 0.25rem;">
+                    {% for error in form.title.errors %}
+                    <div>{{ error }}</div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="{{ form.description.id_for_label }}" class="form-label">Description</label>
+                {{ form.description }}
+                {% if form.description.errors %}
+                <div style="color: var(--danger-color); font-size: 0.875rem; margin-top: 0.25rem;">
+                    {% for error in form.description.errors %}
+                    <div>{{ error }}</div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="row">
+                <div class="col-6">
+                    <div class="form-group">
+                        <label for="{{ form.start_time.id_for_label }}" class="form-label">Start Time</label>
+                        {{ form.start_time }}
+                        {% if form.start_time.errors %}
+                        <div style="color: var(--danger-color); font-size: 0.875rem; margin-top: 0.25rem;">
+                            {% for error in form.start_time.errors %}
+                            <div>{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="form-group">
+                        <label for="{{ form.end_time.id_for_label }}" class="form-label">End Time</label>
+                        {{ form.end_time }}
+                        {% if form.end_time.errors %}
+                        <div style="color: var(--danger-color); font-size: 0.875rem; margin-top: 0.25rem;">
+                            {% for error in form.end_time.errors %}
+                            <div>{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="{{ form.reminder_minutes.id_for_label }}" class="form-label">Reminder Before Deadline (minutes)</label>
+                {{ form.reminder_minutes }}
+                <div class="form-text">Set how many minutes before the deadline you want to receive a reminder.</div>
+                {% if form.reminder_minutes.errors %}
+                <div style="color: var(--danger-color); font-size: 0.875rem; margin-top: 0.25rem;">
+                    {% for error in form.reminder_minutes.errors %}
+                    <div>{{ error }}</div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="d-flex justify-content-between mt-4">
+                <a href="{% url 'task_list' %}" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">Save Task</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set minimum datetime for start and end time fields
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        
+        const minDateTime = `${year}-${month}-${day}T${hours}:${minutes}`;
+        
+        const startTimeField = document.getElementById('id_start_time');
+        const endTimeField = document.getElementById('id_end_time');
+        
+        if (startTimeField) {
+            startTimeField.min = minDateTime;
+        }
+        if (endTimeField) {
+            endTimeField.min = minDateTime;
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,501 @@
+{% extends 'base.html' %}
+
+{% block title %}Analytics - SelfLog{% endblock %}
+{% block page_title %}Productivity Analytics{% endblock %}
+
+{% block extra_css %}
+<style>
+    .metric-card {
+        background: white;
+        border-radius: var(--border-radius);
+        padding: 1.5rem;
+        box-shadow: var(--box-shadow);
+        text-align: center;
+    }
+
+    .metric-value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+
+    .metric-label {
+        color: var(--gray);
+        font-size: 0.875rem;
+    }
+
+    .chart-container {
+        background: white;
+        border-radius: var(--border-radius);
+        padding: 1.5rem;
+        box-shadow: var(--box-shadow);
+        margin-bottom: 1.5rem;
+    }
+
+    .chart-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        color: var(--dark-color);
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .progress-ring {
+        width: 120px;
+        height: 120px;
+        margin: 0 auto 1rem;
+    }
+
+    .progress-circle {
+        transform: rotate(-90deg);
+    }
+
+    .progress-bg {
+        fill: none;
+        stroke: var(--gray-light);
+        stroke-width: 8;
+    }
+
+    .progress-fill {
+        fill: none;
+        stroke: var(--primary-color);
+        stroke-width: 8;
+        stroke-linecap: round;
+        transition: stroke-dashoffset 0.5s ease;
+    }
+
+    .progress-text {
+        font-size: 1.5rem;
+        font-weight: 700;
+        fill: var(--dark-color);
+    }
+
+    .progress-label {
+        font-size: 0.875rem;
+        fill: var(--gray);
+    }
+
+    .insight-card {
+        background: white;
+        border-radius: var(--border-radius);
+        padding: 1.5rem;
+        box-shadow: var(--box-shadow);
+        margin-bottom: 1.5rem;
+    }
+
+    .insight-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .insight-icon {
+        font-size: 1.5rem;
+    }
+
+    .insight-title {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: var(--dark-color);
+    }
+
+    .reason-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid var(--gray-light);
+    }
+
+    .reason-item:last-child {
+        border-bottom: none;
+    }
+
+    .reason-name {
+        flex: 1;
+    }
+
+    .reason-count {
+        background: var(--primary-color);
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+
+    .day-stats {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .day-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 0;
+    }
+
+    .day-bar {
+        flex: 1;
+        height: 8px;
+        background: var(--gray-light);
+        border-radius: 4px;
+        margin: 0 1rem;
+        overflow: hidden;
+    }
+
+    .day-fill {
+        height: 100%;
+        background: var(--primary-color);
+        border-radius: 4px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Date Range Filter -->
+<div class="card">
+    <div class="card-body">
+        <form method="get" class="d-flex align-items-center" style="gap: 1rem;">
+            <label for="range" class="form-label mb-0">Analysis Period:</label>
+            <select name="range" id="range" class="form-select" style="width: auto;" onchange="this.form.submit()">
+                {% for range in time_ranges %}
+                <option value="{{ range.value }}" {% if date_range == range.value %}selected{% endif %}>
+                    {{ range.label }}
+                </option>
+                {% endfor %}
+            </select>
+            <div style="color: var(--gray); font-size: 0.875rem;">
+                {{ start_date|date:"M d, Y" }} - {{ end_date|date:"M d, Y" }}
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Key Metrics -->
+<div class="stats-grid">
+    <div class="metric-card">
+        <div class="progress-ring">
+            <svg viewBox="0 0 120 120" class="progress-ring">
+                <circle class="progress-bg" cx="60" cy="60" r="52"></circle>
+                <circle class="progress-fill" cx="60" cy="60" r="52" 
+                        stroke-dasharray="326.56" 
+                        stroke-dashoffset="{% widthratio 100 completion_rate 326.56 as offset %}{{ offset|add:'-326.56' }}"></circle>
+                <text x="60" y="60" text-anchor="middle" class="progress-text">{{ completion_rate }}%</text>
+                <text x="60" y="75" text-anchor="middle" class="progress-label">Done</text>
+            </svg>
+        </div>
+        <div class="metric-label">Completion Rate</div>
+    </div>
+
+    <div class="metric-card">
+        <div class="metric-value">{{ total_tasks }}</div>
+        <div class="metric-label">Total Tasks</div>
+    </div>
+
+    <div class="metric-card">
+        <div class="metric-value">{{ completed_tasks }}</div>
+        <div class="metric-label">Completed</div>
+    </div>
+
+    <div class="metric-card">
+        <div class="metric-value">{{ not_done_tasks }}</div>
+        <div class="metric-label">Not Done</div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Status Distribution -->
+    <div class="col-6">
+        <div class="chart-container">
+            <h3 class="chart-title">Task Status Distribution</h3>
+            <div id="statusChart" style="height: 300px;">
+                <!-- Chart will be rendered by JavaScript -->
+                <div class="text-center" style="padding: 2rem;">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">📊</div>
+                    <p>Chart will load here</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Daily Completion Trend -->
+    <div class="col-6">
+        <div class="chart-container">
+            <h3 class="chart-title">Daily Completion Trend</h3>
+            <div id="trendChart" style="height: 300px;">
+                <!-- Chart will be rendered by JavaScript -->
+                <div class="text-center" style="padding: 2rem;">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">📈</div>
+                    <p>Chart will load here</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Productivity Insights -->
+    <div class="col-6">
+        <div class="insight-card">
+            <div class="insight-header">
+                <span class="insight-icon">⏱️</span>
+                <h3 class="insight-title">Task Duration</h3>
+            </div>
+            <div style="text-align: center; padding: 1rem 0;">
+                <div style="font-size: 2rem; font-weight: 700; color: var(--primary-color);">
+                    {{ avg_duration }}h
+                </div>
+                <div style="color: var(--gray);">Average task duration</div>
+            </div>
+        </div>
+
+        <div class="insight-card">
+            <div class="insight-header">
+                <span class="insight-icon">📅</span>
+                <h3 class="insight-title">Most Productive Days</h3>
+            </div>
+            <div class="day-stats">
+                {% for day in productive_days %}
+                <div class="day-item">
+                    <span style="font-weight: 500;">{{ day.day }}</span>
+                    <div class="day-bar">
+                        {% if productive_days.0.count > 0 %}
+                        <div class="day-fill" style="width: {% widthratio day.count productive_days.0.count 100 %}%;"></div>
+                        {% else %}
+                        <div class="day-fill" style="width: 0%;"></div>
+                        {% endif %}
+                    </div>
+                    <span style="font-weight: 600; color: var(--primary-color);">{{ day.count }}</span>
+                </div>
+                {% empty %}
+                <div style="text-align: center; padding: 1rem; color: var(--gray);">
+                    No productivity data available
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Missed Tasks Analysis -->
+    <div class="col-6">
+        <div class="insight-card">
+            <div class="insight-header">
+                <span class="insight-icon">🔍</span>
+                <h3 class="insight-title">Missed Tasks Analysis</h3>
+            </div>
+            <div style="margin-bottom: 1rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>Tasks with reasons recorded:</span>
+                    <strong>{{ missed_with_reasons }} / {{ not_done_tasks }}</strong>
+                </div>
+            </div>
+            
+            {% if missed_reason_stats %}
+            <div>
+                <h4 style="margin-bottom: 1rem; font-size: 1rem; color: var(--gray);">Top Reasons</h4>
+                {% for reason in missed_reason_stats %}
+                <div class="reason-item">
+                    <span class="reason-name">{{ reason.missed_reason__name }}</span>
+                    <span class="reason-count">{{ reason.count }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div style="text-align: center; padding: 1rem; color: var(--gray);">
+                No missed tasks with reasons recorded
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="insight-card">
+            <div class="insight-header">
+                <span class="insight-icon">💡</span>
+                <h3 class="insight-title">Improvement Tips</h3>
+            </div>
+            <div style="line-height: 1.6;">
+                {% if completion_rate >= 80 %}
+                <p>🎉 Excellent work! Your completion rate is outstanding. Keep up the great momentum!</p>
+                {% elif completion_rate >= 60 %}
+                <p>👍 Good progress! Try breaking larger tasks into smaller, manageable chunks.</p>
+                {% else %}
+                <p>💪 Focus on prioritizing tasks and setting realistic deadlines to improve completion rates.</p>
+                {% endif %}
+
+                {% if avg_duration > 4 %}
+                <p>⏰ Consider breaking long tasks into shorter sessions to maintain focus.</p>
+                {% endif %}
+
+                {% if not_done_tasks > completed_tasks|add:0 %}
+                <p>📝 Review missed tasks to identify patterns and adjust your planning strategy.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Data Export Section -->
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Export Data</h3>
+    </div>
+    <div class="card-body">
+        <div class="d-flex" style="gap: 1rem;">
+            <button onclick="exportTasksJSON()" class="btn btn-primary">
+                <span>📥</span> Export Tasks as JSON
+            </button>
+            <button onclick="viewProductivityMetrics()" class="btn btn-secondary">
+                <span>📊</span> View Detailed Metrics
+            </button>
+        </div>
+        <div id="exportResult" style="margin-top: 1rem;"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Simple chart implementation using CSS and data attributes
+    function renderStatusChart() {
+        const statusData = {{ status_data|safe }};
+        const container = document.getElementById('statusChart');
+        
+        if (statusData.labels.length === 0) {
+            container.innerHTML = '<div class="text-center" style="padding: 2rem; color: var(--gray);">No data available for the selected period</div>';
+            return;
+        }
+        
+        let html = '<div class="chart-bars" style="display: flex; align-items: end; gap: 1rem; height: 250px; padding: 1rem 0;">';
+        
+        const maxValue = Math.max(...statusData.data);
+        
+        statusData.labels.forEach((label, index) => {
+            const value = statusData.data[index];
+            const percentage = maxValue > 0 ? (value / maxValue) * 100 : 0;
+            const color = statusData.colors[index % statusData.colors.length];
+            
+            html += `
+                <div style="flex: 1; display: flex; flex-direction: column; align-items: center;">
+                    <div style="background: ${color}; width: 80%; height: ${percentage}%; border-radius: 4px 4px 0 0;"></div>
+                    <div style="margin-top: 0.5rem; text-align: center;">
+                        <div style="font-weight: 600; font-size: 1.25rem;">${value}</div>
+                        <div style="font-size: 0.75rem; color: var(--gray);">${label}</div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        container.innerHTML = html;
+    }
+
+    function renderTrendChart() {
+        const dailyData = {{ daily_data|safe }};
+        const container = document.getElementById('trendChart');
+        
+        if (dailyData.length === 0) {
+            container.innerHTML = '<div class="text-center" style="padding: 2rem; color: var(--gray);">No data available for the selected period</div>';
+            return;
+        }
+        
+        const maxRate = Math.max(...dailyData.map(d => d.completion_rate));
+        const dates = dailyData.map(d => {
+            const date = new Date(d.date);
+            return date.getDate() + '/' + (date.getMonth() + 1);
+        });
+        
+        let html = '<div class="trend-line" style="display: flex; align-items: end; gap: 0.5rem; height: 250px; padding: 1rem 0; position: relative;">';
+        
+        // Add trend line
+        html += '<div style="position: absolute; bottom: 40px; left: 0; right: 0; height: 2px; background: var(--gray-light);"></div>';
+        
+        dailyData.forEach((day, index) => {
+            const percentage = maxRate > 0 ? (day.completion_rate / maxRate) * 100 : 0;
+            const isToday = index === dailyData.length - 1;
+            
+            html += `
+                <div style="flex: 1; display: flex; flex-direction: column; align-items: center;">
+                    <div style="background: ${isToday ? 'var(--primary-color)' : 'var(--success-color)'}; 
+                                 width: 12px; height: ${percentage}%; border-radius: 6px; position: relative;">
+                        <div style="position: absolute; top: -25px; left: 50%; transform: translateX(-50%); 
+                                    font-size: 0.75rem; font-weight: 600; white-space: nowrap;">
+                            ${Math.round(day.completion_rate)}%
+                        </div>
+                    </div>
+                    <div style="margin-top: 0.5rem; font-size: 0.75rem; color: var(--gray);">
+                        ${dates[index]}
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        container.innerHTML = html;
+    }
+
+    // Export functions
+    async function exportTasksJSON() {
+        try {
+            const response = await fetch('{% url "get_tasks_json" %}?range={{ date_range }}');
+            const data = await response.json();
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `selflog-tasks-{{ date_range }}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            document.getElementById('exportResult').innerHTML = 
+                '<div class="alert alert-success">Data exported successfully!</div>';
+        } catch (error) {
+            document.getElementById('exportResult').innerHTML = 
+                '<div class="alert alert-danger">Error exporting data: ' + error.message + '</div>';
+        }
+    }
+
+    async function viewProductivityMetrics() {
+        try {
+            const response = await fetch('{% url "productivity_metrics" %}');
+            const data = await response.json();
+            
+            let html = '<div class="alert alert-success"><h4>Productivity Metrics</h4>';
+            html += '<div style="margin-top: 1rem;">';
+            
+            data.weekly_data.forEach(week => {
+                html += `<div style="margin-bottom: 0.5rem;">
+                    <strong>${week.week}:</strong> ${week.completed}/${week.total} tasks (${week.rate}%)
+                </div>`;
+            });
+            
+            html += `<div style="margin-top: 1rem;">
+                <strong>Average Completion Time:</strong> ${data.completion_times.average}h
+            </div>`;
+            
+            html += '</div></div>';
+            document.getElementById('exportResult').innerHTML = html;
+        } catch (error) {
+            document.getElementById('exportResult').innerHTML = 
+                '<div class="alert alert-danger">Error loading metrics: ' + error.message + '</div>';
+        }
+    }
+
+    // Initialize charts when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        renderStatusChart();
+        renderTrendChart();
+    });
+</script>
+{% endblock %}

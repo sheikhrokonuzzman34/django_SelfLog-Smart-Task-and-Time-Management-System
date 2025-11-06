@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+
+{% block title %}All Tasks - SelfLog{% endblock %}
+{% block page_title %}All Tasks{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h2 class="card-title">Your Tasks</h2>
+        <a href="{% url 'create_task' %}" class="btn btn-primary">
+            <span>➕</span> New Task
+        </a>
+    </div>
+    <div class="card-body p-0">
+        <!-- Filter Section -->
+        <div class="p-4 border-bottom">
+            <form method="get" class="d-flex align-items-center" style="gap: 1rem;">
+                <label for="status" class="form-label mb-0">Filter by Status:</label>
+                <select name="status" id="status" class="form-select" style="width: auto;" onchange="this.form.submit()">
+                    <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All Tasks</option>
+                    <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+                    <option value="in_progress" {% if status_filter == 'in_progress' %}selected{% endif %}>In Progress</option>
+                    <option value="completed" {% if status_filter == 'completed' %}selected{% endif %}>Completed</option>
+                    <option value="not_done" {% if status_filter == 'not_done' %}selected{% endif %}>Not Done</option>
+                </select>
+            </form>
+        </div>
+
+        <!-- Tasks Table -->
+        {% if tasks %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Task</th>
+                        <th>Description</th>
+                        <th>Start Time</th>
+                        <th>End Time</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for task in tasks %}
+                    <tr>
+                        <td>
+                            <strong>{{ task.title }}</strong>
+                            {% if task.is_overdue %}
+                            <span class="badge badge-danger" style="margin-left: 0.5rem;">Overdue</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ task.description|truncatewords:10|default:"No description" }}</td>
+                        <td>{{ task.start_time|date:"M d, Y H:i" }}</td>
+                        <td>{{ task.end_time|date:"M d, Y H:i" }}</td>
+                        <td>
+                            <span class="status-badge status-{{ task.status }}">
+                                {{ task.get_status_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="d-flex" style="gap: 0.5rem;">
+                                {% if task.status != 'completed' %}
+                                <form method="post" action="{% url 'update_task_status' task.id %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="status" value="completed">
+                                    <button type="submit" class="btn btn-success btn-sm" title="Mark as Completed">
+                                        <span>✓</span> Done
+                                    </button>
+                                </form>
+                                {% endif %}
+                                
+                                {% if task.status != 'in_progress' and task.status != 'completed' %}
+                                <form method="post" action="{% url 'update_task_status' task.id %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="status" value="in_progress">
+                                    <button type="submit" class="btn btn-primary btn-sm" title="Mark as In Progress">
+                                        <span>▶️</span> Start
+                                    </button>
+                                </form>
+                                {% endif %}
+
+                                <a href="{% url 'edit_task' task.id %}" class="btn btn-secondary btn-sm" title="Edit">
+                                    <span>✏️</span> Edit
+                                </a>
+
+                                <form method="post" action="{% url 'mark_task_not_done' task.id %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-warning btn-sm" title="Mark as Not Done">
+                                        <span>❌</span> Missed
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center p-4">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">📝</div>
+            <h3>No tasks found</h3>
+            <p class="text-muted">Get started by creating your first task.</p>
+            <a href="{% url 'create_task' %}" class="btn btn-primary">Create Your First Task</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

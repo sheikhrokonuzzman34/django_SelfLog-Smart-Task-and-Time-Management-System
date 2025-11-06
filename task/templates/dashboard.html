@@ -1,0 +1,125 @@
+
+
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - SelfLog{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <div style="font-size: 2rem; color: var(--primary-color); margin-bottom: 0.5rem;">📋</div>
+                <div style="font-size: 2rem; font-weight: 700; color: var(--dark-color);">{{ total_tasks }}</div>
+                <div style="color: var(--gray);">Total Tasks</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <div style="font-size: 2rem; color: var(--success-color); margin-bottom: 0.5rem;">✅</div>
+                <div style="font-size: 2rem; font-weight: 700; color: var(--dark-color);">{{ completed_tasks }}</div>
+                <div style="color: var(--gray);">Completed</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <div style="font-size: 2rem; color: var(--warning-color); margin-bottom: 0.5rem;">🔄</div>
+                <div style="font-size: 2rem; font-weight: 700; color: var(--dark-color);">{{ in_progress_tasks }}</div>
+                <div style="color: var(--gray);">In Progress</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <div style="font-size: 2rem; color: var(--danger-color); margin-bottom: 0.5rem;">❌</div>
+                <div style="font-size: 2rem; font-weight: 700; color: var(--dark-color);">{{ not_done_tasks }}</div>
+                <div style="color: var(--gray);">Not Done</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Today's Tasks -->
+    <div class="col-6">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h3 class="card-title">Today's Tasks</h3>
+                <span class="badge badge-primary">{{ today_tasks.count }}</span>
+            </div>
+            <div class="card-body">
+                {% if today_tasks %}
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    {% for task in today_tasks %}
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: var(--gray-light); border-radius: var(--border-radius);">
+                        <div>
+                            <div style="font-weight: 600; margin-bottom: 0.25rem;">{{ task.title }}</div>
+                            <div style="font-size: 0.875rem; color: var(--gray);">
+                                {{ task.start_time|time }} - {{ task.end_time|time }}
+                            </div>
+                        </div>
+                        <span class="status-badge status-{{ task.status }}">
+                            {{ task.get_status_display }}
+                        </span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center" style="padding: 2rem;">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">🎉</div>
+                    <h4>No tasks for today</h4>
+                    <p style="color: var(--gray);">Enjoy your free time or create new tasks!</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Upcoming Tasks -->
+    <div class="col-6">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h3 class="card-title">Upcoming Tasks</h3>
+                <a href="{% url 'task_list' %}" class="btn btn-primary btn-sm">View All</a>
+            </div>
+            <div class="card-body">
+                {% if upcoming_tasks %}
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    {% for task in upcoming_tasks %}
+                    <div style="padding: 1rem; background: white; border: 1px solid var(--gray-light); border-radius: var(--border-radius);">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
+                            <div style="font-weight: 600;">{{ task.title }}</div>
+                            <div style="font-size: 0.875rem; color: var(--gray);">
+                                {{ task.start_time|date:"M d" }}
+                            </div>
+                        </div>
+                        {% if task.description %}
+                        <div style="font-size: 0.875rem; color: var(--gray); margin-bottom: 0.5rem;">
+                            {{ task.description|truncatewords:10 }}
+                        </div>
+                        {% endif %}
+                        <div style="font-size: 0.875rem; color: var(--gray);">
+                            {{ task.start_time|time }} - {{ task.end_time|time }}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center" style="padding: 2rem;">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">📅</div>
+                    <h4>No upcoming tasks</h4>
+                    <p style="color: var(--gray);">No tasks scheduled for the next 7 days.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

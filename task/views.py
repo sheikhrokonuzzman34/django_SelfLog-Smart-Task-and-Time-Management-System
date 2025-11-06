@@ -281,4 +281,268 @@ def manage_missed_reasons(request):
     
     return render(request, 'tasks/manage_missed_reasons.html', context)
 
-# ... (keep the existing view functions: create_task, edit_task, delete_task, update_task_status, analytics, get_tasks_json)
+from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+from django.db.models import Count, Q, F
+from django.utils import timezone
+from datetime import datetime, timedelta
+import json
+from .models import Task, MissedTaskReason
+
+@login_required
+def analytics(request):
+    """Comprehensive analytics dashboard"""
+    # Date range filter
+    date_range = request.GET.get('range', '30days')
+    
+    if date_range == '7days':
+        days = 7
+    elif date_range == '90days':
+        days = 90
+    else:
+        days = 30
+    
+    end_date = timezone.now().date()
+    start_date = end_date - timedelta(days=days)
+    
+    # Get user's tasks in the date range
+    tasks = Task.objects.filter(
+        user=request.user,
+        start_time__date__gte=start_date,
+        start_time__date__lte=end_date
+    )
+    
+    # Basic statistics
+    total_tasks = tasks.count()
+    completed_tasks = tasks.filter(status='completed').count()
+    pending_tasks = tasks.filter(status='pending').count()
+    in_progress_tasks = tasks.filter(status='in_progress').count()
+    not_done_tasks = tasks.filter(status='not_done').count()
+    
+    # Completion rate
+    completion_rate = (completed_tasks / total_tasks * 100) if total_tasks > 0 else 0
+    
+    # Status distribution for chart
+    status_distribution = tasks.values('status').annotate(count=Count('id'))
+    status_data = {
+        'labels': [],
+        'data': [],
+        'colors': ['#4361ee', '#4cc9f0', '#f72585', '#e63946']
+    }
+    
+    for status in status_distribution:
+        status_data['labels'].append(dict(Task.STATUS_CHOICES)[status['status']])
+        status_data['data'].append(status['count'])
+    
+    # Daily completion trend
+    daily_data = []
+    for i in range(days):
+        date = start_date + timedelta(days=i)
+        day_tasks = tasks.filter(start_time__date=date)
+        completed = day_tasks.filter(status='completed').count()
+        total = day_tasks.count()
+        
+        if total > 0:
+            day_completion_rate = (completed / total) * 100
+        else:
+            day_completion_rate = 0
+            
+        daily_data.append({
+            'date': date.strftime('%Y-%m-%d'),
+            'completion_rate': day_completion_rate,
+            'total_tasks': total,
+            'completed_tasks': completed
+        })
+    
+    # Task duration analysis - FIXED: Calculate duration in Python instead of database
+    completed_tasks_with_duration = tasks.filter(
+        status='completed',
+        start_time__isnull=False,
+        end_time__isnull=False
+    )
+    
+    # Calculate average duration manually
+    total_duration_hours = 0
+    valid_tasks_count = 0
+    
+    for task in completed_tasks_with_duration:
+        if task.start_time and task.end_time:
+            duration = task.end_time - task.start_time
+            total_duration_hours += duration.total_seconds() / 3600
+            valid_tasks_count += 1
+    
+    avg_duration = total_duration_hours / valid_tasks_count if valid_tasks_count > 0 else 0
+    
+    # Most productive days
+    productive_days = tasks.filter(status='completed').values(
+        'start_time__week_day'
+    ).annotate(
+        count=Count('id')
+    ).order_by('-count')[:3]
+    
+    day_names = {
+        1: 'Monday', 2: 'Tuesday', 3: 'Wednesday', 4: 'Thursday',
+        5: 'Friday', 6: 'Saturday', 7: 'Sunday'
+    }
+    
+    productive_days_list = []
+    for day in productive_days:
+        productive_days_list.append({
+            'day': day_names[day['start_time__week_day']],
+            'count': day['count']
+        })
+    
+    # Missed tasks analysis
+    missed_tasks = tasks.filter(status='not_done')
+    missed_with_reasons = missed_tasks.filter(
+        Q(missed_reason__isnull=False) | ~Q(custom_missed_reason='')
+    ).count()
+    
+    missed_reason_stats = missed_tasks.filter(
+        missed_reason__isnull=False
+    ).values('missed_reason__name').annotate(count=Count('id')).order_by('-count')[:5]
+    
+    context = {
+        'date_range': date_range,
+        'days': days,
+        'start_date': start_date,
+        'end_date': end_date,
+        
+        # Statistics
+        'total_tasks': total_tasks,
+        'completed_tasks': completed_tasks,
+        'pending_tasks': pending_tasks,
+        'in_progress_tasks': in_progress_tasks,
+        'not_done_tasks': not_done_tasks,
+        'completion_rate': round(completion_rate, 1),
+        
+        # Chart data
+        'status_data': status_data,
+        'daily_data': daily_data,
+        
+        # Advanced analytics
+        'avg_duration': round(avg_duration, 1),
+        'productive_days': productive_days_list,
+        'missed_with_reasons': missed_with_reasons,
+        'missed_reason_stats': list(missed_reason_stats),
+        
+        # Time ranges for filter
+        'time_ranges': [
+            {'value': '7days', 'label': 'Last 7 Days'},
+            {'value': '30days', 'label': 'Last 30 Days'},
+            {'value': '90days', 'label': 'Last 90 Days'},
+        ]
+    }
+    
+    return render(request, 'analytics/analytics.html', context)
+
+@login_required
+def get_tasks_json(request):
+    """API endpoint for task data in JSON format"""
+    date_range = request.GET.get('range', '30days')
+    
+    if date_range == '7days':
+        days = 7
+    elif date_range == '90days':
+        days = 90
+    else:
+        days = 30
+    
+    end_date = timezone.now().date()
+    start_date = end_date - timedelta(days=days)
+    
+    tasks = Task.objects.filter(
+        user=request.user,
+        start_time__date__gte=start_date,
+        start_time__date__lte=end_date
+    ).order_by('start_time')
+    
+    tasks_data = []
+    for task in tasks:
+        # Calculate duration manually
+        duration_hours = 0
+        if task.start_time and task.end_time:
+            duration = task.end_time - task.start_time
+            duration_hours = round(duration.total_seconds() / 3600, 2)
+        
+        tasks_data.append({
+            'id': task.id,
+            'title': task.title,
+            'description': task.description,
+            'start_time': task.start_time.isoformat(),
+            'end_time': task.end_time.isoformat(),
+            'status': task.status,
+            'status_display': task.get_status_display(),
+            'duration_hours': duration_hours,
+            'is_overdue': task.is_overdue,
+            'has_missed_reason': task.has_missed_reason,
+            'missed_reason': task.get_missed_reason_display() if task.has_missed_reason else None,
+        })
+    
+    return JsonResponse({
+        'tasks': tasks_data,
+        'meta': {
+            'total_count': len(tasks_data),
+            'date_range': f"{start_date} to {end_date}",
+            'generated_at': timezone.now().isoformat()
+        }
+    })
+
+@login_required
+def productivity_metrics(request):
+    """Detailed productivity metrics API"""
+    end_date = timezone.now().date()
+    start_date = end_date - timedelta(days=30)  # Last 30 days
+    
+    tasks = Task.objects.filter(
+        user=request.user,
+        start_time__date__gte=start_date,
+        start_time__date__lte=end_date
+    )
+    
+    # Weekly completion rates
+    weekly_data = []
+    for week in range(4):
+        week_start = end_date - timedelta(days=(week + 1) * 7)
+        week_end = end_date - timedelta(days=week * 7)
+        
+        week_tasks = tasks.filter(
+            start_time__date__gte=week_start,
+            start_time__date__lt=week_end
+        )
+        week_completed = week_tasks.filter(status='completed').count()
+        week_total = week_tasks.count()
+        
+        weekly_data.append({
+            'week': f"Week {4 - week}",
+            'completed': week_completed,
+            'total': week_total,
+            'rate': round((week_completed / week_total * 100) if week_total > 0 else 0, 1)
+        })
+    
+    # Task completion time analysis - FIXED
+    completed_tasks = tasks.filter(status='completed')
+    completion_times = []
+    
+    for task in completed_tasks:
+        if task.start_time and task.end_time:
+            completion_time = (task.end_time - task.start_time).total_seconds() / 3600
+            completion_times.append(completion_time)
+    
+    if completion_times:
+        avg_completion_time = sum(completion_times) / len(completion_times)
+        min_completion_time = min(completion_times)
+        max_completion_time = max(completion_times)
+    else:
+        avg_completion_time = min_completion_time = max_completion_time = 0
+    
+    return JsonResponse({
+        'weekly_data': weekly_data,
+        'completion_times': {
+            'average': round(avg_completion_time, 2),
+            'min': round(min_completion_time, 2),
+            'max': round(max_completion_time, 2),
+        },
+        'time_period': f"{start_date} to {end_date}"
+    })

@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+
+{% block title %}Add Reason for Missed Task - SelfLog{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">Add Reason for Missed Task</h4>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <h5><i class="bi bi-info-circle"></i> Add Missing Reason</h5>
+                    <p class="mb-0">You are adding a reason for why "<strong>{{ task.title }}</strong>" was not completed.</p>
+                </div>
+
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        {% for error in form.non_field_errors %}
+                        <p class="mb-0">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <div class="mb-3">
+                        <label for="{{ form.missed_reason.id_for_label }}" class="form-label">Select Reason</label>
+                        {{ form.missed_reason }}
+                        {% if form.missed_reason.errors %}
+                        <div class="text-danger">
+                            {% for error in form.missed_reason.errors %}
+                            <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="{{ form.custom_missed_reason.id_for_label }}" class="form-label">Or Write Your Own Reason</label>
+                        {{ form.custom_missed_reason }}
+                        {% if form.custom_missed_reason.errors %}
+                        <div class="text-danger">
+                            {% for error in form.custom_missed_reason.errors %}
+                            <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <div class="form-text">{{ form.custom_missed_reason.help_text }}</div>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{% url 'task_list' %}" class="btn btn-secondary me-md-2">Cancel</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg"></i> Save Reason
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

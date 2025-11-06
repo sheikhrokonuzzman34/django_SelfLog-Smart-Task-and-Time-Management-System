@@ -1,0 +1,167 @@
+{% extends 'base.html' %}
+
+{% block title %}Missed Tasks Analysis - SelfLog{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Missed Tasks Analysis</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a href="{% url 'manage_missed_reasons' %}" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-gear"></i> Manage Reasons
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Date Range Filter -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3 align-items-center">
+            <div class="col-auto">
+                <label for="range" class="col-form-label">Analysis Period:</label>
+            </div>
+            <div class="col-auto">
+                <select name="range" id="range" class="form-select" onchange="this.form.submit()">
+                    <option value="7days" {% if date_range == '7days' %}selected{% endif %}>Last 7 Days</option>
+                    <option value="30days" {% if date_range == '30days' %}selected{% endif %}>Last 30 Days</option>
+                    <option value="90days" {% if date_range == '90days' %}selected{% endif %}>Last 90 Days</option>
+                </select>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Statistics -->
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Summary</h5>
+            </div>
+            <div class="card-body">
+                <div class="text-center">
+                    <h1 class="display-4 text-warning">{{ total_missed }}</h1>
+                    <p class="text-muted">Total Missed Tasks</p>
+                </div>
+                
+                <div class="mt-4">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>With Predefined Reasons:</span>
+                        <strong>{{ reason_stats|length }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>With Custom Reasons:</span>
+                        <strong>{{ common_custom_reasons|length }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Without Reasons:</span>
+                        <strong>{{ tasks_without_reasons.count }}</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reason Statistics -->
+    <div class="col-md-8 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Top Reasons for Missed Tasks</h5>
+            </div>
+            <div class="card-body">
+                {% if reason_stats %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Reason</th>
+                                <th>Count</th>
+                                <th>Percentage</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for stat in reason_stats %}
+                            <tr>
+                                <td>{{ stat.missed_reason__name }}</td>
+                                <td>{{ stat.count }}</td>
+                                <td>{{ stat.count|floatformat:0 }}%</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted text-center py-3">No predefined reasons recorded yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tasks Without Reasons -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Tasks Without Reasons</h5>
+        <span class="badge bg-warning">{{ tasks_without_reasons.count }}</span>
+    </div>
+    <div class="card-body">
+        {% if tasks_without_reasons %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Task</th>
+                        <th>Due Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for task in tasks_without_reasons %}
+                    <tr>
+                        <td>
+                            <strong>{{ task.title }}</strong>
+                            {% if task.description %}
+                            <br><small class="text-muted">{{ task.description|truncatewords:10 }}</small>
+                            {% endif %}
+                        </td>
+                        <td>{{ task.end_time|date:"M d, Y H:i" }}</td>
+                        <td>
+                            <a href="{% url 'add_missed_reason' task.id %}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-pencil"></i> Add Reason
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted text-center py-3">All missed tasks have reasons recorded. Great job!</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Common Custom Reasons -->
+{% if common_custom_reasons %}
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">Common Custom Reasons</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            {% for reason in common_custom_reasons %}
+            <div class="col-md-6 mb-3">
+                <div class="card bg-light">
+                    <div class="card-body">
+                        <p class="card-text">{{ reason.custom_missed_reason }}</p>
+                        <span class="badge bg-primary">{{ reason.count }} tasks</span>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
