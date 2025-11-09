@@ -12,15 +12,12 @@ def register(request):
         if form.is_valid():
             user = form.save()
             
+            # Set the backend attribute on the user object
+            user.backend = 'users.backends.EmailOrPhoneBackend'
+            
             # Auto-login after registration
             login(request, user)
             
-            # Determine login method for message
-            if user.email:
-                identifier = user.email
-            else:
-                identifier = user.phone_number
-                
             messages.success(request, f'Registration successful! Welcome to SelfLog, {user.first_name}.')
             return redirect('dashboard')
         else:
@@ -31,7 +28,7 @@ def register(request):
     return render(request, 'registration/register.html', {'form': form})
 
 
-@login_required
+@login_required(login_url='login')
 def profile(request):
     """Handle user profile view and update"""
     if request.method == 'POST':
@@ -97,7 +94,7 @@ def custom_login(request):
     return render(request, 'registration/login.html', {'form': form})
 
 
-@login_required
+@login_required(login_url='login')
 def account_settings(request):
     """Advanced account settings page"""
     user = request.user

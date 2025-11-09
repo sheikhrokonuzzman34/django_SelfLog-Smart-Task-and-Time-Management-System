@@ -10,14 +10,40 @@ import json
 from task.models import Task, MissedTaskReason
 from task.forms import TaskForm, MarkAsNotDoneForm, MissedTaskReasonForm
 
-@login_required
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.utils import timezone
+from django.http import JsonResponse
+from django.db.models import Count, Q, Avg
+from datetime import datetime, timedelta
+from .models import Task, MissedTaskReason
+
+@login_required(login_url='login')
 def dashboard(request):
+    # Auto-update task statuses for this user before showing data
+    tasks_to_update = Task.objects.filter(
+        user=request.user,
+        end_time__lt=timezone.now(),
+        status__in=['pending', 'in_progress']
+    )
+    
+    updated_count = 0
+    for task in tasks_to_update:
+        old_status = task.status
+        new_status = task.auto_update_status()
+        if old_status != new_status:
+            updated_count += 1
+    
+    if updated_count > 0:
+        messages.info(request, f"Automatically updated {updated_count} task statuses based on deadlines.")
+    
     # Get current date and calculate date ranges
     today = timezone.now().date()
     week_ago = today - timedelta(days=7)
     month_ago = today - timedelta(days=30)
     
-    # Get user's tasks
+    # Get user's tasks (after auto-update)
     tasks = Task.objects.filter(user=request.user)
     
     # Statistics
@@ -41,7 +67,13 @@ def dashboard(request):
     upcoming_tasks = tasks.filter(
         start_time__date__gte=today,
         start_time__date__lte=today + timedelta(days=7)
-    ).exclude(status='completed').order_by('start_time')[:5]
+    ).exclude(status__in=['completed', 'not_done']).order_by('start_time')[:5]
+        
+    # Overdue tasks (for notification)
+    overdue_tasks = tasks.filter(
+        end_time__lt=timezone.now(),
+        status__in=['pending', 'in_progress']
+    ).count()
     
     context = {
         'total_tasks': total_tasks,
@@ -54,12 +86,31 @@ def dashboard(request):
         'missed_without_reasons': missed_without_reasons,
         'today_tasks': today_tasks,
         'upcoming_tasks': upcoming_tasks,
+        'overdue_tasks': overdue_tasks,
+        'auto_updated_count': updated_count,
     }
     
     return render(request, 'dashboard.html', context)
 
 @login_required
 def task_list(request):
+    # Auto-update task statuses for this user before showing data
+    tasks_to_update = Task.objects.filter(
+        user=request.user,
+        end_time__lt=timezone.now(),
+        status__in=['pending', 'in_progress']
+    )
+    
+    updated_count = 0
+    for task in tasks_to_update:
+        old_status = task.status
+        new_status = task.auto_update_status()
+        if old_status != new_status:
+            updated_count += 1
+    
+    if updated_count > 0:
+        messages.info(request, f"Automatically updated {updated_count} task statuses.")
+    
     status_filter = request.GET.get('status', 'all')
     
     tasks = Task.objects.filter(user=request.user)
@@ -73,30 +124,10 @@ def task_list(request):
     context = {
         'tasks': tasks,
         'status_filter': status_filter,
+        'auto_updated_count': updated_count,
     }
     
     return render(request, 'task_list.html', context)
-
-
-
-@login_required
-def task_list(request):
-    status_filter = request.GET.get('status', 'all')
-    
-    tasks = Task.objects.filter(user=request.user)
-    
-    if status_filter != 'all':
-        tasks = tasks.filter(status=status_filter)
-    
-    tasks = tasks.order_by('start_time')
-    
-    context = {
-        'tasks': tasks,
-        'status_filter': status_filter,
-    }
-    
-    return render(request, 'task_list.html', context)
-
 @login_required
 def create_task(request):
     if request.method == 'POST':

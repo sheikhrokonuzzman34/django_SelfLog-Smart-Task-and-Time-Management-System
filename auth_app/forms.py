@@ -9,7 +9,7 @@ class CustomUserCreationForm(UserCreationForm):
     
     class Meta:
         model = CustomUser
-        fields = ('email', 'phone_number', 'first_name', 'last_name')
+        fields = ('email', 'phone_number', 'first_name', )
     
     def clean(self):
         cleaned_data = super().clean()
@@ -60,24 +60,17 @@ class EmailOrPhoneAuthenticationForm(AuthenticationForm):
         return username
 
 
-class CustomUserRegistrationForm(UserCreationForm):
-    """Form for user registration with email or phone"""
+class CustomUserRegistrationForm(forms.ModelForm):
+    """Form for user registration with no password validation"""
     
     email = forms.EmailField(
-        required=False,
+        required=True,
         widget=forms.EmailInput(attrs={
             'class': 'form-control',
-            'placeholder': 'Enter your email (optional)'
+            'placeholder': 'Enter your email'
         })
     )
-    phone_number = forms.CharField(
-        required=False,
-        max_length=17,
-        widget=forms.TextInput(attrs={
-            'class': 'form-control',
-            'placeholder': 'Enter your phone number (optional)'
-        })
-    )
+
     first_name = forms.CharField(
         max_length=30,
         required=True,
@@ -86,14 +79,7 @@ class CustomUserRegistrationForm(UserCreationForm):
             'placeholder': 'Enter your first name'
         })
     )
-    last_name = forms.CharField(
-        max_length=30,
-        required=True,
-        widget=forms.TextInput(attrs={
-            'class': 'form-control',
-            'placeholder': 'Enter your last name'
-        })
-    )
+    
     password1 = forms.CharField(
         widget=forms.PasswordInput(attrs={
             'class': 'form-control',
@@ -109,33 +95,34 @@ class CustomUserRegistrationForm(UserCreationForm):
     
     class Meta:
         model = CustomUser
-        fields = ('email', 'phone_number', 'first_name', 'last_name', 'password1', 'password2')
+        fields = ('email', 'first_name')
     
     def clean(self):
         cleaned_data = super().clean()
         email = cleaned_data.get('email')
-        phone_number = cleaned_data.get('phone_number')
-        
-        # Validate that at least one identifier is provided
-        if not email and not phone_number:
-            raise ValidationError('You must provide either an email address or phone number.')
+        password1 = cleaned_data.get('password1')
+        password2 = cleaned_data.get('password2')
         
         # Check for existing users
         if email and CustomUser.objects.filter(email=email).exists():
             raise ValidationError('A user with this email already exists.')
         
-        if phone_number and CustomUser.objects.filter(phone_number=phone_number).exists():
-            raise ValidationError('A user with this phone number already exists.')
+        # Only check if passwords match
+        if password1 and password2 and password1 != password2:
+            raise ValidationError('Passwords do not match.')
+        
+        # Only check minimum length (4 characters)
+        if password1 and len(password1) < 4:
+            raise ValidationError('Password must be at least 4 characters long.')
         
         return cleaned_data
     
     def save(self, commit=True):
         user = super().save(commit=False)
+        password = self.cleaned_data["password1"]
         
-        # Ensure at least one identifier is set
-        if not user.email and not user.phone_number:
-            # This should not happen due to form validation, but just in case
-            raise ValueError("Either email or phone number must be provided")
+        if password:
+            user.set_password(password)
         
         if commit:
             user.save()

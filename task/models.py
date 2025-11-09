@@ -54,9 +54,56 @@ class Task(models.Model):
     def __str__(self):
         return self.title
     
+    def save(self, *args, **kwargs):
+        """Override save method to automatically update status based on end_time"""
+        # Check if end_time has passed
+        if self.end_time and self.end_time < timezone.now():
+            if self.status == 'pending':
+                # If status is pending and end_time is over, mark as not_done
+                self.status = 'not_done'
+                self.missed_at = timezone.now()
+            elif self.status == 'in_progress':
+                # If status is in_progress and end_time is over, mark as completed
+                self.status = 'completed'
+        
+        super().save(*args, **kwargs)
+    
+    @property
+    def task_miss(self):
+        """Check if task should be marked as missed"""
+        if self.end_time < timezone.now() and self.status != 'completed':
+            # Auto-update status if needed
+            if self.status == 'pending':
+                self.status = 'not_done'
+                self.missed_at = timezone.now()
+                self.save()
+            elif self.status == 'in_progress':
+                self.status = 'completed'
+                self.save()
+            return True
+        return False
+    
     @property
     def is_overdue(self):
-        return self.end_time < timezone.now() and self.status != 'completed'
+        """Check if task is overdue (end_time passed but not completed)"""
+        return self.end_time < timezone.now() and self.status not in ['completed', 'not_done']
+    
+    @property
+    def should_auto_update(self):
+        """Check if task status should be automatically updated"""
+        return self.end_time < timezone.now() and self.status in ['pending', 'in_progress']
+    
+    def auto_update_status(self):
+        """Automatically update status based on current time and end_time"""
+        if self.end_time < timezone.now():
+            if self.status == 'pending':
+                self.mark_as_not_done()
+                return 'not_done'
+            elif self.status == 'in_progress':
+                self.status = 'completed'
+                self.save()
+                return 'completed'
+        return self.status
     
     @property
     def has_missed_reason(self):

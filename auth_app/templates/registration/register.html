@@ -1,0 +1,79 @@
+{% extends 'base_auth.html' %}
+
+{% block title %}Register - SelfLog{% endblock %}
+{% block auth_title %}Create Account{% endblock %}
+{% block auth_description %}Join SelfLog and boost your productivity{% endblock %}
+
+{% block content %}
+<form method="post">
+    {% csrf_token %}
+    
+    {% if form.non_field_errors %}
+    <div class="alert alert-danger">
+        {% for error in form.non_field_errors %}
+        <p class="mb-0">{{ error }}</p>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="form-group">
+        {{ form.first_name }}
+        {% if form.first_name.errors %}
+        <div class="error-list">
+            {% for error in form.first_name.errors %}
+            <div class="error-item">{{ error }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="form-group">
+        {{ form.email }}
+        {% if form.email.errors %}
+        <div class="error-list">
+            {% for error in form.email.errors %}
+            <div class="error-item">{{ error }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        <div class="form-text">Provide at least one: email or phone number</div>
+    </div>
+
+    <div class="form-group">
+        {{ form.password1 }}
+        {% if form.password1.errors %}
+        <div class="error-list">
+            {% for error in form.password1.errors %}
+            <div class="error-item">{{ error }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        <div class="form-text">
+            Your password must contain at least 8 characters.
+        </div>
+    </div>
+
+    <div class="form-group">
+        {{ form.password2 }}
+        {% if form.password2.errors %}
+        <div class="error-list">
+            {% for error in form.password2.errors %}
+            <div class="error-item">{{ error }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    <button type="submit" class="btn btn-primary">Create Account</button>
+</form>
+
+<div class="auth-links">
+    <div class="auth-divider">
+        <span>or</span>
+    </div>
+    <p>
+        Already have an account? 
+        <a href="{% url 'login' %}" class="auth-link">Sign in here</a>
+    </p>
+</div>
+{% endblock %}

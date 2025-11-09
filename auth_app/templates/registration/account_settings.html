@@ -1,0 +1,122 @@
+{% extends 'base_auth.html' %}
+
+{% block title %}Account Settings - SelfLog{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">Account Settings</h4>
+            </div>
+            <div class="card-body">
+                <!-- Notification Preferences -->
+                <div class="mb-5">
+                    <h5 class="mb-3">Notification Preferences</h5>
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="update_preferences">
+                        
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="emailNotifications" 
+                                       name="email_notifications" {% if user.email_notifications %}checked{% endif %}>
+                                <label class="form-check-label" for="emailNotifications">
+                                    Email Notifications
+                                </label>
+                            </div>
+                            <div class="form-text">Receive task reminders and updates via email</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="pushNotifications" 
+                                       name="push_notifications" {% if user.push_notifications %}checked{% endif %}>
+                                <label class="form-check-label" for="pushNotifications">
+                                    Push Notifications
+                                </label>
+                            </div>
+                            <div class="form-text">Receive browser notifications for task alerts</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="timezone" class="form-label">Timezone</label>
+                            <select class="form-select" id="timezone" name="timezone">
+                                {% for tz in common_timezones %}
+                                <option value="{{ tz }}" {% if user.timezone == tz %}selected{% endif %}>{{ tz }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">Update Preferences</button>
+                    </form>
+                </div>
+                
+                <hr>
+                
+                <!-- Login Information -->
+                <div class="mb-4">
+                    <h5 class="mb-3">Login Information</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6 class="card-title">Current Identifiers</h6>
+                                    <p class="mb-1">
+                                        <strong>Email:</strong> 
+                                        {% if user.email %}
+                                        <span class="text-success">{{ user.email }}</span>
+                                        {% else %}
+                                        <span class="text-muted">Not set</span>
+                                        {% endif %}
+                                    </p>
+                                    <p class="mb-0">
+                                        <strong>Phone:</strong> 
+                                        {% if user.phone_number %}
+                                        <span class="text-success">{{ user.phone_number }}</span>
+                                        {% else %}
+                                        <span class="text-muted">Not set</span>
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6 class="card-title">Last Login</h6>
+                                    <p class="mb-1">
+                                        <strong>Date:</strong> 
+                                        {{ user.last_login|date:"M d, Y H:i" }}
+                                    </p>
+                                    <p class="mb-0">
+                                        <strong>Method:</strong> 
+                                        {% if last_login_method %}
+                                        <span class="text-info">{{ last_login_method|title }}</span>
+                                        {% else %}
+                                        <span class="text-muted">Unknown</span>
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Security -->
+                <div>
+                    <h5 class="mb-3">Security</h5>
+                    <div class="d-grid gap-2 d-md-flex">
+                        <a href="{% url 'password_reset' %}" class="btn btn-outline-warning me-md-2">
+                            <i class="bi bi-key"></i> Change Password
+                        </a>
+                        <a href="{% url 'profile' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-person"></i> Edit Profile
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
